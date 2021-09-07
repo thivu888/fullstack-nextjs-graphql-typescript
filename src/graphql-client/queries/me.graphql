@@ -1,0 +1,18 @@
+query Me{
+  me{
+    id
+    username
+    email
+    posts{
+      id
+        title
+        text
+        createdAt
+        updatedAt
+        textSnippet
+        points
+        userId
+        voteType
+    }
+  }
+}

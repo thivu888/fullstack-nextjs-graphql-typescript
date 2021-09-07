@@ -1,0 +1,24 @@
+query Posts($limit:Float!,$cursor:String){
+  posts(limit:$limit,cursor:$cursor){
+    totalCount
+    cursor
+    hasMore
+    paginatedPosts{
+        id
+        title
+        text
+        createdAt
+        updatedAt
+        textSnippet
+        points
+        userId
+        voteType
+        user{
+          id
+          username
+          email
+         
+        }
+      }
+    }
+}

@@ -1,56 +1,94 @@
-import {
-  Link as ChakraLink,
-  Text,
-  Code,
-  List,
-  ListIcon,
-  ListItem,
-} from '@chakra-ui/react'
-import { CheckCircleIcon, LinkIcon } from '@chakra-ui/icons'
+import { Box, Flex, Heading, Spinner, Stack,Link,Text, Button } from "@chakra-ui/react";
+import Layout from "../components/Layout";
+import { addApolloState, initializeApollo } from "../lib/apolloClient"
+import NextLink from 'next/link'
+import { PostEditDeleteButton } from "../components/PostEditDeleteButton";
+import { PostsDocument, usePostsQuery } from "../generated/graphql";
+import { NetworkStatus } from "@apollo/client";
+import UpvoteSection from '../components/UpvoteSection'
+import { GetServerSidePropsContext } from "next";
+export const limit=4;
+const Index = () => {
+ 
+  const {data,loading,fetchMore,networkStatus}=usePostsQuery({
+    variables:{limit},
+    notifyOnNetworkStatusChange:true,
 
-import { Hero } from '../components/Hero'
-import { Container } from '../components/Container'
-import { Main } from '../components/Main'
-import { DarkModeSwitch } from '../components/DarkModeSwitch'
-import { CTA } from '../components/CTA'
-import { Footer } from '../components/Footer'
+  });
 
-const Index = () => (
-  <Container height="100vh">
-    <Hero />
-    <Main>
-      <Text>
-        Example repository of <Code>Next.js</Code> + <Code>chakra-ui</Code> +{' '}
-        <Code>typescript</Code>.
-      </Text>
+  const loadMore=async()=>fetchMore({
+    variables:{
+      limit,
+      cursor:data?.posts?.cursor
+    }
+  })
 
-      <List spacing={3} my={0}>
-        <ListItem>
-          <ListIcon as={CheckCircleIcon} color="green.500" />
-          <ChakraLink
-            isExternal
-            href="https://chakra-ui.com"
-            flexGrow={1}
-            mr={2}
-          >
-            Chakra UI <LinkIcon />
-          </ChakraLink>
-        </ListItem>
-        <ListItem>
-          <ListIcon as={CheckCircleIcon} color="green.500" />
-          <ChakraLink isExternal href="https://nextjs.org" flexGrow={1} mr={2}>
-            Next.js <LinkIcon />
-          </ChakraLink>
-        </ListItem>
-      </List>
-    </Main>
+  return(<>
+    <Layout>
+        {
+          loading&&(networkStatus!==NetworkStatus.fetchMore)?(
+            <Flex justifyContent='center' alignItems='center' minH='100vh'>
+              <Spinner/>
+            </Flex>
+          ):(
+            <Stack spacing={8}>
+                {
+                  data?.posts?.paginatedPosts.map(post=>(
+                    <Flex key={post.id} shadow='md' borderWidth='1px'>
+                      <UpvoteSection post={post} />
+                      <Box m={4}>
+                        <NextLink href={`/post/${post.id}`}>
+                          <Link>
+                            <Heading fontSize='xl'>{post.title}</Heading>
+                          </Link>
+                        </NextLink>
+                        <Text>post by {post.user.username}</Text>
+                        <Flex align='center'>
+                          <Text mt={4} mr={4}>{post.textSnippet}</Text>
+                          <PostEditDeleteButton
+                          postId={post.id}
+                          postUserId={post.user.id.toString()}
+                          />
+                        </Flex>
+                      </Box>
+                    </Flex>
+                  ))
+                }
+            </Stack>
+          )
+        }
+        {
+          data?.posts?.hasMore&&(
+            <Flex>
+              <Button m='auto' my={8} 
+                      isLoading={networkStatus==NetworkStatus.fetchMore} 
+                      onClick={loadMore} 
+              >
+                  {networkStatus==NetworkStatus.fetchMore?'Loading...':'Show more'}
+              </Button>
+            </Flex>
+          )
+        }
+    </Layout>
+      
+      </>
+  )
 
-    <DarkModeSwitch />
-    <Footer>
-      <Text>Next ❤️ Chakra</Text>
-    </Footer>
-    <CTA />
-  </Container>
-)
+}
+
+export async function getServerSideProps(context:GetServerSidePropsContext) {
+  const apolloClient = initializeApollo({headers:context.req.headers})
+
+  await apolloClient.query({
+    query:PostsDocument,
+    variables:{
+      limit:4
+    }
+  })
+
+  return addApolloState(apolloClient, {
+    props:{},
+  })
+}
 
 export default Index
